@@ -2,6 +2,11 @@ from dotenv import load_dotenv
 import os.path
 import requests
 from pprint import pprint
+import json
+
+from tqdm.notebook import trange
+from time import sleep
+from tqdm import trange, tqdm
 
 dotenv_path = "confirm.env"
 if os.path.exists(dotenv_path):
@@ -66,13 +71,29 @@ class Yandex:
 
     def upload_photo(self, photo_url, photo_info):
         all_photo = []
-        photo_name = photo_info["response"]["items"][0]["likes"]["count"]
-        for i in photo_url:
+        for j, i in zip(
+            photo_info["response"]["items"],
+            tqdm(photo_url, desc="Общая загрузка всех фотографий"),
+        ):
+            photo_name = j["likes"]["count"]
             url = "https://cloud-api.yandex.net/v1/disk/resources/upload"
-            param = {"path": f"/photo/{photo_name}.jpg", "url": photo_url[0]}
-            headers = {"Authorization": f"OAuth {ya_token}"}
+            param = {"path": f"/photo/{photo_name}.jpg", "url": i}
+            headers = self.headers
             response = requests.post(url, params=param, headers=headers)
+            sleep(0.01)
+            for x in trange(10000, desc=f'Загрузка фотографии "{photo_name}"'):
+                sleep(0.0001)
             all_photo.append(response)
+
+            with open("result.json", "w", encoding="utf-8") as file:
+                res = []
+                for i in photo_info:
+                    dict_res = {}
+                    dict_res["file_name"] = f"{photo_name}.jpg"
+                    dict_res["size"] = "z"
+                    res.append(dict_res)
+                json.dump(res, file)
+
         return all_photo
 
 
@@ -84,5 +105,5 @@ photo_url = vk_user.biggest_photo(user_id)
 # pprint(photo_url)
 # pprint(photo_info)
 # print(yandex.create_folder('photo'))
-
-pprint(yandex.upload_photo(photo_url, photo_info))
+yandex.upload_photo(photo_url, photo_info)
+# pprint(yandex.upload_photo(photo_url, photo_info))
